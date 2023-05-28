@@ -1,0 +1,109 @@
+---
+- hosts: inetRouter
+  become: yes
+  become_user: root
+  tasks:
+  - name: add bond0 iface
+    nmcli:
+      type: bond
+      conn_name: 'bond0'
+      ip4: '192.168.255.1/24'
+      mode: 'active-backup'
+      state: present
+
+  - name: add bond-slave eth1
+    nmcli:
+      type: bond-slave
+      conn_name: 'eth1'
+      ifname: 'eth1'
+      master: 'bond0'
+      state: present
+
+  - name: add bond-slave eth2
+    nmcli:
+      type: bond-slave
+      conn_name: 'eth2'
+      ifname: 'eth2'
+      master: 'bond0'
+      state: present
+
+- hosts: centralRouter
+  become: yes
+  become_user: root
+  tasks:
+  - name: add bond0 iface
+    nmcli:
+      type: bond
+      conn_name: 'bond0'
+      ip4: '192.168.255.2/24'
+      mode: 'active-backup'
+      state: present
+
+  - name: add bond-slave eth1
+    nmcli:
+      type: bond-slave
+      conn_name: 'eth1'
+      ifname: 'eth1'
+      master: 'bond0'
+      state: present
+
+  - name: add bond-slave eth2
+    nmcli:
+      type: bond-slave
+      conn_name: 'eth2'
+      ifname: 'eth2'
+      master: 'bond0'
+      state: present
+
+- hosts: testServer1
+  become: yes
+  become_user: root
+  tasks:
+  - name: Add VLAN to i-face eth1
+    nmcli:
+      type: vlan
+      conn_name: eth1.100
+      vlandev: eth1
+      vlanid: 100
+      ip4: 10.10.10.1/24
+      state: present
+
+- hosts: testClient1
+  become: yes
+  become_user: root
+  tasks:
+  - name: Add VLAN to i-face eth1
+    nmcli:
+      type: vlan
+      conn_name: eth1.100
+      vlandev: eth1
+      vlanid: 100
+      ip4: 10.10.10.2/24
+      state: present
+
+
+- hosts: testServer2
+  become: yes
+  become_user: root
+  tasks:
+  - name: Add VLAN to i-face eth1
+    nmcli:
+      type: vlan
+      conn_name: eth1.101
+      vlandev: eth1
+      vlanid: 101
+      ip4: 10.10.10.1/24
+      state: present
+
+- hosts: testClient2
+  become: yes
+  become_user: root
+  tasks:
+  - name: Add VLAN to i-face eth1
+    nmcli:
+      type: vlan
+      conn_name: eth1.101
+      vlandev: eth1
+      vlanid: 101
+      ip4: 10.10.10.2/24
+      state: present

@@ -1,0 +1,30 @@
+---
+- name: Install FreeIPA Server
+  hosts: ldapserver
+  become: yes
+  become_user: root
+  
+  tasks:
+    - name: Set hostname for Server
+      command: >
+        hostnamectl set-hostname ldapserver.test.local
+
+    - name: install FreeIPA package
+      yum:
+        name: 
+          - ipa-server
+          - ipa-server-dns
+        state: installed
+
+    - name: Configure IPA Master
+      command: >
+        ipa-server-install -U \
+        --setup-dns \
+        --auto-forwarders \
+        --hostname=ldapserver.test.local \
+        --ip-address=192.168.50.10 \
+        --no-reverse
+        -n test.local \
+        -r TEST.LOCAL \
+        -p otus7654 \
+        -a otus7654 \

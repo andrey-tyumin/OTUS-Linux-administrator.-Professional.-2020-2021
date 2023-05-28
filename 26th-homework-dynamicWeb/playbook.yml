@@ -1,0 +1,139 @@
+---
+- name: Dinamo Weeeeeeeeeb
+  hosts: web
+  become: true
+  become_user: root
+ 
+  handlers:
+     - name: restart nginx
+       systemd:
+         name: nginx
+         state: restarted
+         enabled: yes
+
+     - name: reload nginx
+       systemd:
+         name: nginx
+         state: reloaded
+
+  tasks:
+
+    - name: Install epel-release
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Install packages 
+      yum:
+        name: ['nginx', 'setools', 'policycoreutils-python-2.5-34.el7.x86_64', 'python-pip', 'python-devel', 'gcc', 'nodejs']
+        state: latest
+    
+    - name: update pip and install flask
+      raw: pip install --upgrade pip && pip install flask
+
+#   - name:  Create NGINX config file from template
+#     template:
+#       src: templates/nginx.conf.j2
+#       dest: /etc/nginx/nginx.conf
+#     notify:
+#       - reload nginx
+
+    - name: Create dir for goHello
+      file:
+        path: /root/goService/
+        state: directory
+
+    - name: Copy goHello in dir
+      copy:
+        src: files/goHello
+        dest: /root/goService/goHello
+        owner: root
+        group: root
+        mode: '0755'
+        backup: yes
+
+    - name: Copy go.service
+      copy:
+        src: files/go.service
+        dest: /etc/systemd/system
+        backup: yes
+
+    - name: start goService
+      systemd:
+        name: go
+        state: started
+        enabled: yes
+
+    - name: Copy nginx go.conf
+      copy:
+        src: files/go.conf
+        dest: /etc/nginx/conf.d/
+       
+
+    - name: Create dir for flaskHello
+      file:
+        path: /root/flaskService/
+        state: directory
+
+    - name: Copy flaskHello in dir
+      copy:
+        src: files/flaskHello.py
+        dest: /root/flaskService/flaskHello.py
+        owner: root
+        group: root
+        mode: '0755'
+        backup: yes
+
+    - name: Copy flask.service
+      copy:
+        src: files/flask.service
+        dest: /etc/systemd/system
+        backup: yes
+
+    - name: start flaskService
+      systemd:
+        name: flask
+        state: started
+        enabled: yes
+
+    - name: Copy nginx flask.conf
+      copy:
+        src: files/flask.conf
+        dest: /etc/nginx/conf.d/
+
+
+    - name: Create dir for nodejsHello
+      file:
+        path: /root/nodejsService/
+        state: directory
+
+    - name: Copy nodejsHello in dir
+      copy:
+        src: files/nodejsHello.js
+        dest: /root/nodejsService/nodejsHello.js
+        owner: root
+        group: root
+        mode: '0755'
+        backup: yes
+
+    - name: Copy node.service
+      copy:
+        src: files/node.service
+        dest: /etc/systemd/system
+        backup: yes
+
+    - name: start nodeService
+      systemd:
+        name: node
+        state: started
+        enabled: yes
+
+    - name: Copy nginx node.conf
+      copy:
+        src: files/node.conf
+        dest: /etc/nginx/conf.d/
+
+    - name: Add SELinux perm
+      raw: semanage port -a -t http_port_t -p tcp 9002 && semanage port -a -t http_port_t -p tcp 9003 && semanage port -a -t http_port_t -p tcp 9004  && setsebool httpd_can_network_connect on
+      notify:
+        - restart nginx

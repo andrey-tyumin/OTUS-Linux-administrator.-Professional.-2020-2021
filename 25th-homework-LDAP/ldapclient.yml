@@ -1,0 +1,33 @@
+---
+- name: Configure client
+  hosts: ldapclient
+  become: true
+  become_user: root
+
+  tasks:
+    - name: Set hostname for Client
+      command: >
+        hostnamectl set-hostname ldapclient.test.local
+
+    - name: Set dns server for Client
+      shell: >
+        echo "nameserver 192.168.50.10">/etc/resolv.conf
+
+    - name: install FreeIPA packege
+      yum:
+        name:
+          - ipa-client
+        state: present
+
+    - name: join FreeIPA
+      command: >
+        ipa-client-install -U \
+        -p admin \
+        -w otus7654 \
+        --server=ldapserver.test.local \
+        --ip-address=192.168.50.10 \
+        --domain=test.local \
+        --realm=TEST.LOCAL \
+        --hostname=ldapclient.test.local \
+        --mkhomedir \       
+        --force-ntpd \

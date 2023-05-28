@@ -1,0 +1,11 @@
+[Unit]
+Description=Go Service 7000
+
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory=/root/goService
+ExecStart=/root/goService/goHello
+
+[Install]
+WantedBy=multi-user.target

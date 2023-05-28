@@ -1,0 +1,4 @@
+[freeipaserver]
+ldapserver.test.local ansible_host=127.0.0.1 ansible_port=2222 ansible_private_key_file=.vagrant/machines/ldapserver/virtualbox/private_key
+[freeipaclient]
+ldapclient.test.local ansible_host=127.0.0.1 ansible_port=2200 ansible_private_key_file=.vagrant/machines/ldapclient/virtualbox/private_key

@@ -1,0 +1,108 @@
+# -*- mode: ruby -*-
+# vim: set ft=ruby :
+# -*- mode: ruby -*-
+# vim: set ft=ruby :
+
+MACHINES = {
+:inetRouter => {
+        :box_name => "centos/7",
+        :net => [
+                   {ip: '192.168.255.1', adapter: 2, netmask: "255.255.255.252", virtualbox__intnet: "router-net"},
+                ]
+  },
+:inetRouter2 => {
+        :box_name => "centos/7",
+        :net => [
+                   {ip: '192.168.255.5', adapter: 2, netmask: "255.255.255.252", virtualbox__intnet: "router2-net"},
+                   {ip: '172.28.128.3', adapter: 3, netmask: "255.255.255.0"},
+                ]
+  },
+  :centralRouter => {
+        :box_name => "centos/7",
+        :net => [
+                   {ip: '192.168.255.2', adapter: 2, netmask: "255.255.255.252", virtualbox__intnet: "router-net"},
+                   {ip: '192.168.255.6', adapter: 4, netmask: "255.255.255.252", virtualbox__intnet: "router2-net"},
+                   {ip: '192.168.0.1', adapter: 3, netmask: "255.255.255.240", virtualbox__intnet: "dir-net"},
+                ]
+  },
+  
+  :centralServer => {
+        :box_name => "centos/7",
+        :net => [
+                   {ip: '192.168.0.2', adapter: 2, netmask: "255.255.255.240", virtualbox__intnet: "dir-net"},
+                ]
+  },
+}
+
+Vagrant.configure("2") do |config|
+
+  MACHINES.each do |boxname, boxconfig|
+
+    config.vm.define boxname do |box|
+
+        box.vm.box = boxconfig[:box_name]
+        box.vm.host_name = boxname.to_s
+
+        boxconfig[:net].each do |ipconf|
+          box.vm.network "private_network", ipconf
+        end
+        
+        if boxconfig.key?(:public)
+          box.vm.network "public_network", boxconfig[:public]
+        end
+
+        box.vm.provision "shell", inline: <<-SHELL
+          mkdir -p ~root/.ssh
+                cp ~vagrant/.ssh/auth* ~root/.ssh
+        SHELL
+        
+        case boxname.to_s
+        when "inetRouter"
+          box.vm.provision "shell", run: "always", inline: <<-SHELL
+            sysctl net.ipv4.conf.all.forwarding=1
+            iptables -t nat -A POSTROUTING ! -d 192.168.0.0/16 -o eth0 -j MASQUERADE
+            sudo ip route add 192.168.0.0/16 via 192.168.255.2
+	    cp /vagrant/knock.rules /home/vagrant/
+	    systemctl start sshd
+	    sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+	    systemctl restart sshd
+	    iptables-restore</vagrant/knock.rules
+            yum install -y tcpdump
+            SHELL
+	when "inetRouter2"
+          box.vm.provision "shell", run: "always", inline: <<-SHELL
+            sysctl net.ipv4.conf.all.forwarding=1
+            iptables -t nat -A PREROUTING -i eth2 -p tcp --dport 8080 -j DNAT --to 192.168.0.2:80
+            iptables -t nat -A POSTROUTING  -p tcp --dst 192.168.0.2 --dport 80 -j SNAT --to-source 192.168.255.5
+            ip route add 192.168.0.0/16 via 192.168.255.6
+            yum install -y tcpdump
+            SHELL
+        when "centralRouter"
+          box.vm.provision "shell", run: "always", inline: <<-SHELL
+        sysctl net.ipv4.conf.all.forwarding=1
+        echo "net.ipv4.ip_forward = 1" >> /usr/lib/sysctl.d/50-default.conf
+        echo "DEFROUTE=no" >> /etc/sysconfig/network-scripts/ifcfg-eth0 
+            echo "GATEWAY=192.168.255.1" >> /etc/sysconfig/network-scripts/ifcfg-eth1
+        systemctl restart network
+        ip route replace default via 192.168.255.1
+	yum -y install nc
+	cp /vagrant/knock.sh /home/vagrant/
+	chmod +x /home/vagrant/knock.sh
+	cp /vagrant/ssh_to_inetRouter.sh /home/vagrant/
+	chmod +x /home/vagrant/ssh_to_inetRouter.sh
+	yum -y install nmap tcpdump
+	SHELL
+        when "centralServer"
+          box.vm.provision "shell", run: "always", inline: <<-SHELL
+            echo "DEFROUTE=no" >> /etc/sysconfig/network-scripts/ifcfg-eth0 
+            echo "GATEWAY=192.168.0.1" >> /etc/sysconfig/network-scripts/ifcfg-eth1
+            systemctl restart network
+            ip route replace default via 192.168.0.1
+	    yum -y install epel-release
+	    yum -y install nginx tcpdump
+            systemctl enable --now nginx
+            SHELL
+        end
+      end
+  end
+end

@@ -1,0 +1,64 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+# setup pxeServer box
+config.vm.define "pxeserver" do |server|
+  config.vm.box = 'centos/8.2'
+  config.vm.box_url = 'https://cloud.centos.org/centos/8/x86_64/images/CentOS-8-Vagrant-8.2.2004-20200611.2.x86_64.vagrant-virtualbox.box'
+  config.vm.box_download_checksum = '698b0d9c6c3f31a4fd1c655196a5f7fc224434112753ab6cb3218493a86202de'
+  config.vm.box_download_checksum_type = 'sha256'
+
+#setup pxe box env
+  server.vm.host_name = 'pxeserver'
+  server.vm.network :private_network, 
+                     ip: "10.0.0.20", 
+                     virtualbox__intnet: 'pxenet'
+
+  # server.vm.network "forwarded_port", guest: 80, host: 8081
+
+#setup vm prefs
+  server.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+  end
+
+  # ENABLE to setup PXE. Start shell provision
+  server.vm.provision "shell",
+    name: "Setup PXE server",
+    path: "setup_pxe.sh"
+  end
+
+#Setup pxe client env
+# Cent OS 8.2
+# config used from this
+# https://github.com/eoli3n/vagrant-pxe/blob/master/client/Vagrantfile
+  config.vm.define "pxeclient" do |pxeclient|
+    pxeclient.vm.box = 'centos/8.2'
+    pxeclient.vm.host_name = 'pxeclient'
+    pxeclient.vm.network :private_network, ip: "10.0.0.21"
+    pxeclient.disksize.size = '30GB'
+#    pxeclient.vm.disk :disk, size: "20GB", primary: true
+    pxeclient.vm.provider :virtualbox do |vb|
+      vb.memory = "2048"
+# Makes the NAT engine use the host's resolver mechanisms to handle DNS requests
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+# Configures the type of networking for each of the VM's virtual network cards
+      vb.customize [
+          'modifyvm', :id,
+          '--nic1', 'intnet',
+          '--intnet1', 'pxenet',
+          '--nic2', 'nat',
+          '--boot1', 'net',
+          '--boot2', 'none',
+          '--boot3', 'none',
+          '--boot4', 'none'
+        ]
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    end
+      # ENABLE to fix memory issues
+#     end
+  end
+
+end

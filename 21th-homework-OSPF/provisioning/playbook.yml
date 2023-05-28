@@ -1,0 +1,49 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: installfrr
+    yum:
+     name: frr
+     state: latest
+
+  - name: enable ip forward
+    command: sysctl -w net.ipv4.ip_forward=1
+  - name: enable ip forward forewer
+    command: echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf
+  - name: disable rp_filter
+    command: sysctl -w net.ipv4.conf.all.rp_filter=0
+  - name: disable rp_filter forewer
+    command: echo net.ipv4.conf.all.rp_filter = 0 >> /etc/sysctl.conf
+  - name: copy daemons file
+    copy: src=daemons dest=/etc/frr/daemons owner=root group=root mode=0644
+
+- hosts: r1
+  become: yes
+  tasks:
+  - name: copy ospf conf file
+    copy: src=r1_ospfd.conf dest=/etc/frr/ospfd.conf owner=root group=root mode=0644
+  - name: copy zebra conf file
+    copy: src=r1_zebra.conf dest=/etc/frr/zebra.conf owner=root group=root mode=0644
+  - name: ensure frr is running and enabled
+    service: name=frr state=restarted enabled=yes
+
+- hosts: r2
+  become: yes
+  tasks:
+  - name: copy ospf conf file
+    copy: src=r2_ospfd.conf dest=/etc/frr/ospfd.conf owner=root group=root mode=0644
+  - name: copy zebra conf file
+    copy: src=r2_zebra.conf dest=/etc/frr/zebra.conf owner=root group=root mode=0644
+  - name: ensure frr is running and enabled
+    service: name=frr state=restarted enabled=yes
+    
+- hosts: r3
+  become: yes
+  tasks:
+  - name: copy ospf conf file
+    copy: src=r3_ospfd.conf dest=/etc/frr/ospfd.conf owner=root group=root mode=0644
+  - name: copy zebra conf file
+    copy: src=r3_zebra.conf dest=/etc/frr/zebra.conf owner=root group=root mode=0644
+  - name: ensure frr is running and enabled
+    service: name=frr state=restarted enabled=yes

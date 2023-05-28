@@ -1,0 +1,27 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1536
+    v.cpus = 1
+  end
+
+  config.vm.define "ldapserver" do |server|
+    server.vm.network "private_network", ip: "192.168.50.10", virtualbox__intnet: "net1"
+    server.vm.provision "ansible" do |ansible|
+      ansible.playbook = "ldapserver.yml"
+     end	
+  end
+
+  config.vm.define "ldapclient" do |client|
+    client.vm.network "private_network", ip: "192.168.50.11", virtualbox__intnet: "net1"
+    client.vm.provision "ansible" do |ansible|
+      ansible.playbook = "ldapclient.yml"
+     end	
+  end
+
+end

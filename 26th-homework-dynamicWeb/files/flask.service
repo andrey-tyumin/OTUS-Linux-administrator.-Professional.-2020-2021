@@ -1,0 +1,8 @@
+[Unit]
+Description= Python/Flask Service 5000
+
+[Service]
+ExecStart=/usr/bin/python /root/flaskService/flaskHello.py
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+MACHINES = {
+:webServer => {
+        :box_name => "centos/7",
+        :net => [
+                   {ip: '192.168.50.10', adapter: 2, netmask: "255.255.255.0", virtualbox__intnet: "web"},
+                   {ip: '172.28.128.3', adapter: 3, netmask: "255.255.255.0"},
+                ]
+  },
+}
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "playbook.yml"
+  end
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
+    v.cpus = 1
+  end
+
+  config.vm.define "web" do |web|
+    web.vm.hostname = "web"
+    web.vm.network "forwarded_port", guest: 9002, host: 9002
+    web.vm.network "forwarded_port", guest: 9003, host: 9003
+    web.vm.network "forwarded_port", guest: 9004, host: 9004
+  end
+
+end

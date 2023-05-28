@@ -1,0 +1,8 @@
+[Unit]
+Description= NodeJS Service 3000
+
+[Service]
+ExecStart=/usr/bin/node /root/nodejsService/nodejsHello.js
+
+[Install]
+WantedBy=multi-user.target
