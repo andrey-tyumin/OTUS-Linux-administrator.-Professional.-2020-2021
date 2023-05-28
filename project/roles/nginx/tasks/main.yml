@@ -1,0 +1,79 @@
+---
+# tasks file for nginx
+- name: nginx | install nginx repo
+  copy:
+    src: nginx.repo
+    dest: /etc/yum.repos.d/nginx.repo 
+
+- name: nginx | install NGINX
+  yum:
+    name: nginx
+    enablerepo: nginx-stable
+
+- name: nginx | install certbot
+  yum:
+    name: certbot-nginx
+
+- name: Start and enable nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: nginx | Create dirs for key and cert
+  become: yes
+  file:
+    path: "{{ item | dirname }}"
+    state: directory
+  with_items:
+    - /etc/pki/nginx/
+    - /etc/pki/nginx/private/
+
+- name: nginx | generate self-signed SSL certificate
+  become: yes
+  command:
+    openssl req -new -nodes -x509 -subj "/C=RU/ST=Otus/L=Otus/O=Otus/CN={{ inventory_hostname }}.test.local" -days 30 -keyout /etc/pki/nginx/private/server.key -out /etc/pki/nginx/server.crt -extensions v3_ca
+  args:
+    creates: /etc/pki/nginx/server.crt
+
+- name: ginx | create DF
+  become: yes
+  command:
+    openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+  args:
+    creates: /etc/ssl/certs/dhparam.pem
+
+- name: nginx | copy nginx.conf
+  become: yes
+  copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+
+- name: nginx | restart nginx
+  service:
+    name: nginx
+    state: restarted
+
+- name: nginx | enable firewalld
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: nginx | open http port
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+
+- name: nginx | open https port
+  firewalld:
+    service: https
+    permanent: yes
+    state: enabled
+
+- name: nginx | restart firewalld
+  service:
+    name: firewalld
+    state: restarted

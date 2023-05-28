@@ -1,0 +1,8 @@
+---
+# handlers file for wordpress
+
+- name: restart php-fpm
+  service:
+    name: php74-php-fpm
+    state: restarted
+

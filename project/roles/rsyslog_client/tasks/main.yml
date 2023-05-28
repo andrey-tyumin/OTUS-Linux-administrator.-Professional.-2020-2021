@@ -1,0 +1,84 @@
+---
+# tasks file for rsyslog_client
+
+- name: Rsyslog client | install rsyslog
+  yum:
+    name: ['rsyslog', 'audispd-plugins.x86_64']
+    state: present
+
+- name: Rsyslog client | Set audit /etc
+  lineinfile:
+    path: /etc/audit/rules.d/audit.rules
+    insertafter: EOF
+    line: '-w /etc/ -k etc_watch"'
+
+#- name: Rsysslog client | Set audit /etc
+#  raw: >
+#    echo "-w /etc/ -k etc_watch" >> /etc/audit/rules.d/audit.rules
+#
+#
+#- name: Rsyslog client | Save audit rule for /etc
+#  command: >
+#    auditctl -l >> /etc/audit/rules.d/audit.rules
+#
+- name: Rsyslog client | Add rsyslog send error messages
+  lineinfile: 
+    path: /etc/rsyslog.d/err.conf
+    line: '*.err @192.168.50.11:514'
+    create: yes
+
+- name: Rsyslog client | Add rsyslog send alert messages
+  lineinfile: 
+    path: /etc/rsyslog.d/alert.conf
+    line: '*.alert @192.168.50.11:514'
+    create: yes
+
+- name: Rsyslog client | Add rsyslog send crit messages
+  lineinfile: 
+    path: /etc/rsyslog.d/crit.conf
+    line: '*.crit @192.168.50.11:514'
+    create: yes
+
+- name: Rsyslog client | Add rsyslog send warning messages
+  lineinfile: 
+    path: /etc/rsyslog.d/warning.conf
+    line: '*.warning @192.168.50.11:514'
+    create: yes
+
+- name: Rsyslog client | Add rsyslog send notice messages
+  lineinfile: 
+    path: /etc/rsyslog.d/notice.conf
+    line: '*.notice @192.168.50.11:514'
+    create: yes
+
+- name: Rsyslog client | Enable send audit log on remote server
+  lineinfile: 
+    path: /etc/audisp/plugins.d/au-remote.conf
+    regexp: '^active = no'
+    line: 'active = yes'
+
+- name: Rsyslog client | IP for audit remote server
+  lineinfile: 
+    path: /etc/audisp/audisp-remote.conf
+    regexp: '^remote_server ='
+    line: 'remote_server = 192.168.50.11'
+
+- name: Rsyslog client | Set no local audit logs
+  lineinfile: 
+    path: /etc/audit/auditd.conf
+    regexp: '^write_logs = yes'
+    line: 'write_logs = no'
+
+- name: Rsyslog Server | Restart auditd
+  command: >
+    service auditd restart
+
+- name: Rsyslog Server | Restart rsyslog
+  service:
+    name: rsyslog
+    state: restarted 
+
+- name: Rsyslog Server | Restart nginx
+  service:
+    name: nginx
+    state: restarted 

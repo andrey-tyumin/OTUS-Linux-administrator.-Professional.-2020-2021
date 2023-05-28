@@ -1,0 +1,47 @@
+---
+# tasks file for mariadb
+
+- name: Install MariaDB
+  yum: 
+    name: ['mariadb-server', 'MySQL-python', 'libselinux-python', 'libsemanage-python']
+
+- name: Configure SELinux to start mysql on any port
+  seboolean: 
+    name: mysql_connect_any 
+    state: true 
+    persistent: yes
+
+#- name: Create Mysql configuration file
+#  copy: 
+#    src: my.cnf
+#    dest: /etc/my.cnf
+#  notify:
+#  - restart mariadb
+
+- name: Create MariaDB log file
+  file: 
+    path: /var/log/mysqld.log 
+    state: touch 
+    owner: mysql 
+    group: mysql 
+    mode: 0775
+
+- name: Start MariaDB Service
+  service: 
+    name: mariadb 
+    state: started 
+    enabled: yes
+
+- name: add firewalld rule
+  firewalld: 
+    port: 3306/tcp 
+    permanent: true 
+    state: enabled 
+    immediate: yes
+  ignore_errors: yes
+
+#- name: Change root password
+#  mysql_user:
+#    name: root
+#    password: 123
+#  ignore_errors: yes

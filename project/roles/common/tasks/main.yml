@@ -1,0 +1,26 @@
+---
+# tasks file for common
+
+- name: common | add host in /etc/hosts
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      192.168.50.10 webServer.test.local webServer
+      192.168.50.11 logServer.test.local logServer
+      192.168.50.12 zabbixServer.test.local zabbixServer
+
+- name: common | install EPEL
+  yum:
+    name: epel-release
+
+- name: common | add little soft
+  yum:
+    name: ['links', 'elinks', 'wget']
+
+- name: common | add route to inetRouter
+  raw: ip route add 192.168.255.0/30 via 192.168.50.1
+  ignore_errors: True
+
+- name: common | set hostname
+  command: >
+    hostnamectl set-hostname {{ inventory_hostname }}.test.local

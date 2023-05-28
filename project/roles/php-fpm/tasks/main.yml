@@ -1,0 +1,10 @@
+---
+# tasks file for php-fpm
+- name: php-fpm | install remi repo
+  yum:
+    name: http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+
+- name: Install php-fpm and deps
+  yum: 
+    name: ['php74', 'php74-php-fpm', 'php74-php-pecl-mysql', 'php74-php-mbstring', 'php74-php-enchant', 'php-PHPMailer', 'php74-php-process', 'php-simplepie', 'php74-php-xml']
+    enablerepo: remi-safe

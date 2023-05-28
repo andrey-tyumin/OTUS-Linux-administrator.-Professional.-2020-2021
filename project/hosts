@@ -1,0 +1,3 @@
+webServer ansible_host=127.0.0.1 ansible_port=2201 ansible_private_key_file=.vagrant/machines/webServer/virtualbox/private_key
+logServer ansible_host=127.0.0.1 ansible_port=2202 ansible_private_key_file=.vagrant/machines/logServer/virtualbox/private_key
+zabbixServer ansible_host=127.0.0.1 ansible_port=2203 ansible_private_key_file=.vagrant/machines/zabbixServer/virtualbox/private_key

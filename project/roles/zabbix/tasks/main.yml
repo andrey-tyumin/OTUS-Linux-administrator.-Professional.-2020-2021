@@ -1,0 +1,79 @@
+---
+# tasks file for zabbix
+
+- name: zabbix | copy new nginx.conf
+  become: yes
+  copy:
+    src: nginx.conf
+    dest: /etc/nginx/nginx.conf
+    backup: yes
+
+- name: zabbix | restart nginx
+  service:
+    name: nginx
+    state: restarted
+
+- name: zabbix | enable firewalld
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: zabbix | open http port
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+
+- name: zabbix | open https port
+  firewalld:
+    service: https
+    permanent: yes
+    state: enabled
+
+- name: zabbix | restart firewalld
+  service:
+    name: firewalld
+    state: restarted
+
+#- name: zabbix | Install php-fpm and deps
+#  yum:
+#    name: ['php', 'php-fpm', 'php-enchant', 'php-IDNA_Convert', 'php-mbstring', 'php-mysql', 'php-PHPMailer', 'php-process', 'php-simplepie', 'php-xml']
+
+- name: zabbix | insert php.ini
+  copy:
+    src: php.ini
+    dest: /etc/php.ini
+    backup: yes
+
+- name: zabbix | restart php-fpm
+  service:
+    name: php-fpm
+    state: restarted
+
+- name: zabbix | install zabbix repo
+  yum:
+    name: https://repo.zabbix.com/zabbix/4.0/rhel/7/x86_64/zabbix-release-4.0-2.el7.noarch.rpm
+
+- name: zabbix | install zabbix service
+  yum:
+    name: ['zabbix-server-mysql', 'zabbix-web-mysql', 'zabbix-agent']
+
+- name: Create zabbix database
+  mysql_db:
+    name: zabbix
+    state: present
+
+- name: Create zabbix database user
+  mysql_user:
+    name: zabbix
+    password: 123
+    priv: zabbix.*:ALL
+    host: localhost
+    state: present
+
+- name: zabbix | start and enable zabbix
+  service:
+    name: zabbix-server
+    state: started
+    enabled: yes

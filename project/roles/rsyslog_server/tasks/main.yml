@@ -1,0 +1,60 @@
+---
+# tasks file for rsyslog_server
+
+- name: Rsyslog Server | Install rsyslog
+  yum:
+    name: rsyslog
+
+- name: Rsyslog Server | start and enable rsyslog
+  service:
+    name: rsyslog
+    state: started
+    enabled: yes
+
+- name: Rsyslog Server | Open port for audit logs
+  lineinfile: 
+    path: /etc/audit/auditd.conf
+    regexp: '^#tcp_listen_port = 60'
+    line: 'tcp_listen_port = 60'
+
+- name: Rsyslog Server | Enable UDP im module
+  lineinfile: 
+    path: /etc/rsyslog.conf
+    regexp: '^#$ModLoad imudp'
+    line: '$ModLoad imudp'
+
+- name: Rsyslog Server | UDP port for rsyslog
+  lineinfile: 
+    path: /etc/rsyslog.conf
+    regexp: '^#$UDPServerRun 514'
+    line: '$UDPServerRun 514'
+
+- name: Rsyslog Server | Enable TCP im module
+  lineinfile:
+    path: /etc/rsyslog.conf
+    regexp: '^#$ModLoad imtcp/'
+    line: '$ModLoad imtcp/'
+
+- name: Rsyslog Server | TCP port for rsyslog
+  lineinfile: 
+    path: /etc/rsyslog.conf
+    regexp: '^#$InputTCPServerRun 514'
+    line: '#$InputTCPServerRun 514'
+
+- name: Rsyslog Server | define files for remote service
+  blockinfile:
+    path: /etc/rsyslog.conf
+    insertafter: EOF
+    block: |
+      if $fromhost-ip contains '192.168.50.10' then /var/log/wordpress.log
+      if $fromhost-ip contains '192.168.50.12' then /var/log/zabbix.log
+
+- name: Rsyslog Server | Restart auditd
+  command: >
+    service auditd restart
+
+- name: Rsyslog Server | Restart rsyslog
+  service:
+    name: rsyslog
+    state: restarted 
+   

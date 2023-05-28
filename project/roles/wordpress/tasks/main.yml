@@ -1,0 +1,109 @@
+---
+# tasks file for wordpress
+- name: Wordress | Create Wordpress root dir
+  file:
+    path: /var/www
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: '0755'
+
+- name: Wordress | Create php-fpm socket dir
+  file:
+    path: /var/run/php-fpm
+    state: directory
+
+- name: Download WordPress
+  get_url: 
+    url: https://wordpress.org/latest.tar.gz
+    dest: /var/www/latest.tar.gz
+
+- name: Unzip zip
+  command: /bin/tar xvf latest.tar.gz 
+  args:
+    chdir: /var/www/
+    creates: /var/www/wordpress 
+
+- name: Add group for wordpress
+  group: 
+    name: wordpress
+
+- name: Add user for wordpress
+  user: 
+    name: wordpress 
+    group: wordpress 
+    home: /var/www/wordpress/
+
+- name: Create WordPress database
+  mysql_db: 
+    name: wordpress 
+    state: present
+
+- name: Create WordPress database user
+  mysql_user: 
+    name: wordpress 
+    password: 123
+    priv: wordpress.*:ALL 
+    host: localhost
+    state: present
+
+- name: Copy WordPress config
+  copy: 
+    src: wp-config.php 
+    dest: /var/www/wordpress/
+
+- name: Change owner wordpress dir
+  file: 
+    path: /var/www/wordpress/ 
+    owner: wordpress 
+    group: wordpress 
+    state: directory 
+    recurse: yes 
+    mode: 0755
+
+- name: install SEManage
+  yum: 
+    name: policycoreutils-python 
+    state: present
+
+- name: set the SELinux policy
+  command: semanage fcontext -a -t httpd_sys_content_t "/var/www/wordpress(/.*)?"
+
+- name: set the SELinux policy for wp-config.php
+  command: semanage fcontext -a -t httpd_sys_script_exec_t "/var/www/wordpress/wp-config\.php"
+
+- name: set the SELinux policy for wp-content
+  command: semanage fcontext -a -t httpd_sys_rw_content_t "/var/www/wordpress/wp-content(/.*)?"
+
+- name: set the SELinux policy for the *.php files
+  command: semanage fcontext -a -t httpd_sys_script_exec_t "/var/www/wordpress/.*\.php"
+
+- name: set the SELinux policy for the Upgrade
+  command: semanage fcontext -a -t httpd_sys_rw_content_t "/var/www/wordpress/wp-content/upgrade(/.*)?"
+
+- name: set the SELinux policy for the Uploads
+  command: semanage fcontext -a -t httpd_sys_rw_content_t "/var/www/wordpress/wp-content/uploads(/.*)?"
+
+- name: set the SELinux policy for the wp-includes
+  command: semanage fcontext -a -t httpd_sys_script_exec_t "/var/www/wordpress/wp-includes/.*\.php"
+
+- name: set the SELinux on all the Files
+  command: restorecon -Rv /var/www/wordpress
+
+- name: Disable default php pool
+  command: mv /etc/opt/remi/php74/php-fpm.d/www.conf /etc/opt/remi/php74/php-fpm.d/www.disabled
+  args:
+    creates: /etc/php-fpm.d/www.disabled
+  notify: restart php-fpm
+
+- name: Copy php-fpm configuration
+  copy:
+    src: wordpress.conf
+    dest: /etc/opt/remi/php74/php-fpm.d/
+  notify: restart php-fpm
+
+- name: Start php-fpm
+  service: 
+    name: php74-php-fpm
+    state: started 
+    enabled: yes

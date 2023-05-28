@@ -1,0 +1,36 @@
+---
+- name: common tasks
+  hosts: all
+  become: true
+  become_user: root
+  roles:
+    - common
+    - zabbix-agent
+
+- name: Install webServer
+  hosts: webServer
+  become: true
+  roles:
+    - nginx
+    - mariadb
+    - php-fpm
+    - wordpress
+    - rsyslog_client
+
+- name: Install RSyslog Server
+  hosts: logServer
+  become: true
+  become_user: root
+  roles:
+    - rsyslog_server
+
+- name: install Zabbix
+  hosts: zabbixServer
+  become: true
+  become_user: root
+  roles:
+    - nginx
+    - php-fpm
+    - mariadb
+    - zabbix
+    - rsyslog_client

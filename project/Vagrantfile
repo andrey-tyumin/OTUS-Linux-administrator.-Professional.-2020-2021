@@ -1,0 +1,72 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 512
+    v.cpus = 1
+  end
+
+#  config.vm.provision :ansible do |ansible|
+#    ansible.playbook = "playbook.yml"
+#    ansible.inventory_path = "hosts"
+#  end
+
+  config.vm.define "inetRouter" do |inetRouter|
+    inetRouter.vm.host_name = "inetRouter"
+    inetRouter.vm.network "private_network", ip: "192.168.255.1", virtualbox__intnet: "router-net"
+    inetRouter.vm.network "private_network", ip: "172.28.128.3"
+    inetRouter.vm.provision "shell", run: "always", inline: <<-SHELL
+            sysctl net.ipv4.conf.all.forwarding=1
+            iptables -t nat -A PREROUTING -i eth2 -p tcp --dport 8080 -j DNAT --to 192.168.50.10:80
+            iptables -t nat -A POSTROUTING  -p tcp --dst 192.168.50.10 --dport 80 -j SNAT --to-source 192.168.255.1
+            iptables -t nat -A PREROUTING -i eth2 -p tcp --dport 9080 -j DNAT --to 192.168.50.12:80
+            iptables -t nat -A POSTROUTING  -p tcp --dst 192.168.50.12 --dport 80 -j SNAT --to-source 192.168.255.1
+            iptables -t nat -A PREROUTING -i eth2 -p tcp --dport 8443 -j DNAT --to 192.168.50.10:443
+            iptables -t nat -A POSTROUTING  -p tcp --dst 192.168.50.10 --dport 443 -j SNAT --to-source 192.168.255.1
+            iptables -t nat -A PREROUTING -i eth2 -p tcp --dport 9443 -j DNAT --to 192.168.50.12:443
+            iptables -t nat -A POSTROUTING  -p tcp --dst 192.168.50.12 --dport 443 -j SNAT --to-source 192.168.255.1
+           #iptables -A INPUT -p tcp --dports 22 -j ACCEPT
+           #iptables -P INPUT DROP
+            iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+            iptables -A FORWARD -m conntrack --ctstate NEW -d 192.168.50.10 -j ACCEPT
+            iptables -A FORWARD -m conntrack --ctstate NEW -d 192.168.50.12 -j ACCEPT
+            iptables -P FORWARD DROP
+            ip route add 192.168.50.0/24 via 192.168.255.2
+            yum install -y tcpdump
+            SHELL
+  end
+
+  config.vm.define "centralRouter" do |centralRouter|
+    centralRouter.vm.host_name = "cenralRouter"
+    centralRouter.vm.network "private_network", ip: "192.168.255.2", virtualbox__intnet: "router-net"
+    centralRouter.vm.network "private_network", ip: "192.168.50.1", virtualbox__intnet: "wpnet"
+        centralRouter.vm.provision "shell", run: "always", inline: <<-SHELL
+        sysctl net.ipv4.conf.all.forwarding=1
+	yum -y install nc nmap tcpdump
+        echo "net.ipv4.ip_forward = 1" >> /usr/lib/sysctl.d/50-default.conf
+        echo "DEFROUTE=no" >> /etc/sysconfig/network-scripts/ifcfg-eth0 
+        echo "GATEWAY=192.168.255.1" >> /etc/sysconfig/network-scripts/ifcfg-eth1
+        systemctl restart network
+        ip route replace default via 192.168.255.1
+	SHELL
+  end
+
+  config.vm.define "webServer" do |webServer|
+    webServer.vm.host_name = "webServer"
+    webServer.vm.network "private_network", ip: "192.168.50.10", virtualbox__intnet: "wpnet"
+  end
+
+  config.vm.define "logServer" do |logServer|
+    logServer.vm.network "private_network", ip: "192.168.50.11", virtualbox__intnet: "wpnet"
+    logServer.vm.hostname = "logServer"
+  end
+
+  config.vm.define "zabbixServer" do |zabbixServer|
+    zabbixServer.vm.network "private_network", ip: "192.168.50.12", virtualbox__intnet: "wpnet"
+    zabbixServer.vm.host_name = "zabbixServer"
+  end
+
+end
