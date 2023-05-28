@@ -1,0 +1,47 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+MACHINES = {
+:masterServer => {
+        :box_name => "centos/7",
+        :ip_addr => '192.168.50.10'
+  },
+:slaveServer => {
+        :box_name => "centos/7",
+        :ip_addr => '192.168.50.11'
+  },
+:barman => {
+        :box_name => "centos/7",
+        :ip_addr => '192.168.50.12'
+  },
+}
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
+    v.cpus = 1
+  end
+
+  config.vm.provision :ansible do |ansible|
+    ansible.playbook = "playbook.yml"
+    ansible.inventory_path = "hosts"
+  end
+
+  config.vm.define "masterServer" do |master|
+    master.vm.network "private_network", ip: "192.168.50.10", virtualbox__intnet: "net1"
+    master.vm.host_name = "masterServer"
+  end
+
+  config.vm.define "slaveServer" do |slave|
+    slave.vm.network "private_network", ip: "192.168.50.11", virtualbox__intnet: "net1"
+    slave.vm.hostname = "slaveServer"
+  end
+
+  config.vm.define "barman" do |barman|
+    barman.vm.network "private_network", ip: "192.168.50.12", virtualbox__intnet: "net1"
+    barman.vm.host_name = "barman"
+  end
+
+end

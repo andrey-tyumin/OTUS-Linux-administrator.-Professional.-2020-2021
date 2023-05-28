@@ -1,0 +1,44 @@
+---
+# tasks file for postgres_install
+- name: install PostgreSQL repo
+  yum:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: install PostgreSQL
+  yum: 
+    name: postgresql11-server
+    state: present
+
+- name: install PostgreSQL deps
+  yum:
+    name: "{{ item }}" 
+    state: present
+  with_items:
+    - python-psycopg2
+    - postgresql11
+
+- name: Init db
+  command: /usr/pgsql-11/bin/postgresql-11-setup initdb
+  args:
+    creates: /var/lib/pgsql/11/data/PG_VERSION
+
+- name: Start and enable PostgreSQL service
+  systemd:
+    name: postgresql-11
+    state: started
+    enabled: yes
+
+- name: Allow new incoming packets on TCP port 5432 (PostgreSQL)
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: 5432
+    ctstate: NEW
+    syn: match
+    jump: ACCEPT
+    comment: Accept new connections to postgresql.
+
+
+- name: Allow SELinux policy
+  command: setsebool -P httpd_can_network_connect_db 1

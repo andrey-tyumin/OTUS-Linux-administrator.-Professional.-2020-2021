@@ -1,0 +1,6 @@
+---
+# tasks file for create_test_db---
+- name: Create test_db
+  postgresql_db:
+    name: test_db
+    encoding: UTF-8

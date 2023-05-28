@@ -1,0 +1,60 @@
+---
+# tasks file for slave-setup---
+
+- name: stop postgresql on slave server
+  service:
+    name: postgresql-11
+    state: stopped
+
+- name: clear data catalog
+  file:
+    state: "{{ item }}"
+    path: "/var/lib/pgsql/11/data/"
+    owner: postgres  # set your owner, group, and mode accordingly
+    group: postgres
+    mode: '0700'
+  with_items:
+    - absent
+    - directory
+
+- name: sync data dir with master
+  shell: export PGPASSWORD=123 && pg_basebackup --host=192.168.50.10 --username=repluser --pgdata=/var/lib/pgsql/11/data --wal-method=stream
+  become: true
+  become_user: postgres
+
+- name: copy postgres.conf for PostgreSQL slave
+  copy:
+    src: postgresql.conf
+    dest: /var/lib/pgsql/11/data/postgresql.conf
+    owner: postgres
+    group: postgres
+    mode: 0644
+    backup: yes
+  become: true
+  become_user: postgres
+
+- name: copy pg_hba.conf for PostgreSQL slave
+  copy:
+    src: pg_hba.conf
+    dest: /var/lib/pgsql/11/data/pg_hba.conf
+    owner: postgres
+    group: postgres
+    mode: 0644
+    backup: yes
+  become: true
+  become_user: root
+
+- name: copy recovery.conf for PostgreSQL slave
+  copy:
+    src: recovery.conf
+    dest: /var/lib/pgsql/11/data/recovery.conf
+    owner: postgres
+    group: postgres
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: start postgresql
+  service:
+    name: postgresql-11
+    state: started

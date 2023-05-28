@@ -1,0 +1,17 @@
+---
+# handlers file for slave-setup---
+
+- name: restart postgresql
+  service: 
+    name: postgresql-11 
+    state: restarted
+
+- name: stop postgresql
+  service: 
+    name: postgresql-11
+    state: stopped
+
+- name: start postgresql
+  service: 
+    name: postgresql-11
+    state: started

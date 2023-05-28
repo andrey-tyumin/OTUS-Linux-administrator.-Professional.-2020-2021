@@ -1,0 +1,53 @@
+---
+# tasks file for barman---
+
+- name: install epel-release
+  yum:
+    name: epel-release
+    state: present
+   
+- name: install PGDG repo
+  yum: 
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: install 2ndQuadrant repo
+  raw: curl https://dl.2ndquadrant.com/default/release/get/11/rpm | sudo bash
+
+- name: add masterServer in /etc/hosts
+  raw: echo "192.168.50.10 masterServer masterServer">>/etc/hosts
+  become: true
+  become_user: root
+
+- name: install barman
+  yum:
+    name: barman
+    state: present
+
+- name: set path to receive_wal and etc.
+  raw: echo "export PATH=$PATH:/usr/pgsql-11/bin">>/etc/environment
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: root
+
+- name: copy barman.conf
+  copy:
+    src: barman.conf
+    dest: /etc/barman.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  become: true
+  become_user: root
+
+- name: copy masterServer.conf for backup masterServer
+  copy:
+    src: masterServer.conf
+    dest: /etc/barman.d/masterServer.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  become_user: root

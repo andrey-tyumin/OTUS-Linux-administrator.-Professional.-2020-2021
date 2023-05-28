@@ -1,0 +1,43 @@
+---
+- name: Install PostgreSQL
+  hosts: all
+  become: true
+  become_user: root
+
+  roles: 
+    - role: postgres_install
+
+- name: Setup master Server
+  hosts: masterServer
+  become: true
+  become_user: root
+
+  roles:
+    - role: master-setup
+
+
+- name: Setup slave Server
+  hosts: slaveServer
+  become: true
+  become_user: root
+
+  roles:
+    - role: slave-setup
+
+
+- name: Create test database on master Server
+  hosts: masterServer
+  become: true
+  become_user: root
+
+  roles:
+    - role: create_test_db
+
+
+- name: Install and configure barman
+  hosts: barman
+  become: true
+  become_user: root
+
+  roles:
+    - role: barman
