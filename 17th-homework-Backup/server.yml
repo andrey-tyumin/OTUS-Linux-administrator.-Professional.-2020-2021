@@ -1,0 +1,66 @@
+---
+- name : Install packages
+  hosts : backupServer
+  become : true
+  become_user: root
+
+  tasks: 
+    - name: Install epel
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Install borgbackup
+      yum:
+        name: borgbackup
+        state: present
+
+    - name: Copy the file from master to the destination
+      copy:
+        src: "buffer/backupClient-id_rsa.pub"
+        dest: "/tmp/backupClient-id_rsa.pub"
+    - name: Create ssh directory if it does not exist
+      file:
+        path: ~/.ssh
+        state: directory
+        mode: '0700'
+   
+    - name: Create a file autorized_keys  if it does not exist
+      file:
+        path: ~/.ssh/autorized_keys
+        state: touch
+        mode: '0644'
+
+    - name: add the public key into Authorized_keys file to enable Key Auth
+      shell: "cat /tmp/backupClient-id_rsa.pub >> ~/.ssh/authorized_keys"
+      register: addtoauth
+
+    - name: Create directory for mount if it does not exist
+      file:
+        path: /root/backup
+        state: directory
+        mode: '0744'
+
+    - name: Mount and bind a volume
+      mount:
+        path: /var/backup
+        src: /root/backup
+        opts: bind
+        state: mounted
+        fstype: none
+
+    - name: Fetch the keyfile from vm to host buffer
+      fetch:
+        src: "/etc/ssh/ssh_host_ecdsa_key.pub"
+        dest: "buffer/backupServer-id_rsa.pub"
+        flat: yes
+
+    - name: add SSH host key
+      known_hosts:
+        name='192.168.50.11'
+        key="192.168.50.11 {{ lookup('file', 'buffer/backupClientHost-id_rsa.pub') }}"
+
+    - name: add SSH host key
+      known_hosts:
+        name='192.168.50.10'
+        key="192.168.50.10 {{ lookup('file', 'buffer/backupServer-id_rsa.pub') }}"

@@ -1,0 +1,114 @@
+1. Уменьшить том под / до 8G.
+[vagrant@lvm ~]$ lsblk
+NAME                    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda                       8:0    0   40G  0 disk 
+├─sda1                    8:1    0    1M  0 part 
+├─sda2                    8:2    0    1G  0 part /boot
+└─sda3                    8:3    0   39G  0 part 
+  ├─VolGroup00-LogVol00 253:0    0 37.5G  0 lvm  /
+  └─VolGroup00-LogVol01 253:1    0  1.5G  0 lvm  [SWAP]
+sdb                       8:16   0   10G  0 disk 
+sdc                       8:32   0    2G  0 disk 
+sdd                       8:48   0    1G  0 disk 
+sde  
+xfs не поддерживает изменение размера
+Создаем временный физический том (PV) том для /:
+pvcreate /dev/sdb
+Создаем группу томов VG(vg_root) и добавляем туда созданный PV(/dev/sdb):
+vgcreate vg_root /dev/sdb
+Создаем логический том(с именем lv_root) в созданной VG(/dev/vg_root) с рамером 100% от размера VG:
+lvcreate -n lv_root -l+100%FREE /dev/vg_root
+Создаем файловую систему на созданном lv_root:
+mkfs.xfs /dev/vg_root/lv_root
+Монтируем её:
+mount /dev/vg_root/lv_root /mnt
+Копируем все данные с / в /mnt:
+xfsdump -J - /dev/VolGroup00/LogVol00 | xfsrestore -J - /mnt
+Chroot в /mnt:
+for i in /proc/ /sys/ /dev/ /run/ /boot/; do mount --bind $i /mnt/$i;done
+chroot /mnt/
+Обновление grub:
+grub2-mkconfig -o /boot/grub2/grub.cfg
+обновление initrd:
+cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g; s/.img//g"` --force; done
+
+Меняем в /boot/grub2/grub.cfg:
+rd.lvm.lv=VolGroup00/LogVol00 на:
+rd.lvm.lv=vg_root/lv_root
+
+Перезагрузка.
+Проверка изменений с помощью  lsblk
+
+Изменяем размер старой VG:
+Удаляем старый LV в старой VG:
+lvremove /dev/Volgroup00/LogVol00
+Создаем новый LV(с размером 8G) в старой VG:
+lvcreate -n VolGroup00/LogVol00 -L8G /dev/VolGroup0
+Создаем фс в созданном LV:
+mkfs.xfs /dev/VolGroup00.LogVol00
+Монтируем:
+mount /dev/VolGroup00/LogVol00 /mnt
+Копируем данные обратно:
+xfsdump -J - /dev/vg_root/lv_root |xfsrestore -J - /mnt
+Chroot в /mnt:
+for i in /proc/ /sys/ /dev/ /run/ /boot/; do mount --bind $i /mnt/$i; done
+chroot /mnt
+grub2-mkconfig-o /boot/grub2/grub.cfg
+Обновляем initrd:
+cd /boot ; for i in `ls initramfs-*img`; do dracut -v $i `echo $i|sed "s/initramfs-//g; s/.img//g"` --force; done
+
+
+2. Выделим том под /var в зеркало:
+Создаем PV из двух дисков:
+pvcreate /dev/sdc /dev/sdd
+Создаем VG:
+vgcreate vg_var //dev/sdc /dev/sdd
+Создаем LV:
+lvcreate -L950M -m1 -n lv_var vg_var (-m указывает количество зеркал)
+Создаем фс для новой /var
+mkfs.ext4 /dev/vg_var/lv_var
+Монтируем в /mnt:
+mount /dev/vg_var/lv_var /mnt
+Копируем старый /var в /mnt:
+cp -aR /var/* /mnt/
+Сохраняем старый /var:
+mkdir /tmp/oldvar && mv /var/* tmp/oldvar
+Размонтируем новый /var из /mnt, и примонтируем его в /var:
+umount /mnt
+mount /dev/vg_var/lv_var /var
+Изменяем fstab:
+
+echo "`blkid | grep var: | awk '{print $2}'` /var ext4 defaults 0 0" >> /etc/fstab
+
+
+Перезагружаемся.
+Удаляем LV VG PV созданные для временного раздела /
+lvremove /dev/vg_root/lv_root
+vgremove /dev/vg_root
+pvremove /dev/sdb
+
+3. Выделяем том под /home (действуем как и с /var)
+lvcreate-n LogVol_Home -L 2G /dev/VolGroup00
+mkfs.xfs /dev/VolGroup00/LogVol_Home
+mount /dev/VolGroup00/LogVol_Home /mnt/
+cp -aR /home/* /mnt/ 
+rm -rf /home/*
+umount /mnt
+mount /dev/VolGroup00/LogVol_Home /home/
+
+echo "`blkid | grep Home | awk '{print $2}'` /home xfs defaults 0 0" >> /etc/fstab
+
+
+4. Снапшот для /home
+Нагенерим файлов:
+touch /home/file{1..20}
+Сделаем снапшот (опция -s -создаем том для снапшота, имя тома home_snap):
+lvcreate -L 100MB -s -n home_snap /dev/VolGroup00/LogVol_Home
+
+Удаляем часть файлов:
+rm -f /home/file{11..20}
+Восстанавливаем:
+umount /home
+lvconvert --merge /dev/VolGroup00/home_snap
+mount /home
+

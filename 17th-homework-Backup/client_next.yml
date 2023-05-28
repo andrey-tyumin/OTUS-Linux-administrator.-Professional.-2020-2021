@@ -1,0 +1,53 @@
+---
+- name : configure backups
+  hosts : backupClient
+  become : true
+  become_user: root
+  
+  tasks:
+   - name: add SSH host key
+     known_hosts:
+       name='192.168.50.10'
+       key="192.168.50.10 {{ lookup('file', 'buffer/backupServer-id_rsa.pub') }}"
+
+   - name: add SSH host key
+     known_hosts:
+       name='192.168.50.11'
+       key="192.168.50.11 {{ lookup('file', 'buffer/backupClientHost-id_rsa.pub') }}"
+
+   - name: set bogr repo passphrase
+     raw: echo "export BORG_PASSPHRASE='otus'">>/etc/environment
+     args:
+       executable: /bin/bash     
+
+   - name: init borg repo
+     raw: "borg init --encryption=repokey-blake2 root@192.168.50.10:/var/backup/etcBorgRepo"
+     args:
+       executable: /bin/bash
+
+   - name: copy systemd unit
+     copy:
+       src: borg-etc.service
+       dest: /etc/systemd/system
+
+   - name: copy systemd timer
+     copy:
+       src: borg-etc.timer
+       dest: /etc/systemd/system
+
+   - name: Enable service
+     systemd:
+       name: borg-etc
+       enabled: yes
+       masked: no
+
+   - name: start service
+     systemd:
+       state: started
+       name: borg-etc
+
+   - name: Enable a timer
+     systemd:
+       name: borg-etc.timer
+       state: started
+       enabled: yes

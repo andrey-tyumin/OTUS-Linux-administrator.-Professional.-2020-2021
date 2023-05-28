@@ -1,0 +1,16 @@
+[Unit]
+Description=Automated Borg Backup: backupClient etc dir
+
+[Service]
+Type=oneshot
+Environment=BORG_PASSPHRASE=otus
+ExecStart=/bin/borg create \
+    --stat --compression zlib \
+    root@192.168.50.10:/var/backup/etcBorgRepo::clientBakcup-etc-{now} /etc
+ExecStart=/bin/borg check root@192.168.50.10:/var/backup/etcBorgRepo
+ExecStart=/bin/borg prune \
+    --keep-within  3d     \
+    --keep-daily   90     \
+    --keep-monthly 12     \
+    --keep-yearly  1     \
+    root@192.168.50.10:/var/backup/etcBorgRepo

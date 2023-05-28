@@ -1,0 +1,48 @@
+---
+- name : Install packages
+  hosts : backupClient
+  become : true
+  become_user: root
+
+  tasks: 
+    - name: Install epel
+      yum:
+        name: epel-release
+        state: present
+
+    - name: Install borgbackup
+      yum:
+        name: borgbackup
+        state: present
+
+    - name: Create ssh directory if it does not exist
+      file:
+        path: ~/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: Create a file autorized_keys  if it does not exist
+      file:
+        path: ~/.ssh/autorized_keys
+        state: touch
+        mode: '0644'
+
+    - name: generate SSH key "~/.ssh/id_rsa"
+      openssh_keypair:
+        path: "~/.ssh/id_rsa"
+        type: rsa
+        size: 4096
+        state: present
+        force: no
+
+    - name: Fetch the keyfile from vm to host buffer
+      fetch: 
+        src: "~/.ssh/id_rsa.pub"
+        dest: "buffer/backupClient-id_rsa.pub"
+        flat: yes
+
+    - name: Fetch the host keyfile from vm to host buffer
+      fetch:
+        src: "/etc/ssh/ssh_host_ecdsa_key.pub"
+        dest: "buffer/backupClientHost-id_rsa.pub"
+        flat: yes
